@@ -3,21 +3,39 @@
 properties([disableConcurrentBuilds()])
 
 pipeline {
-    triggers { pollSCM('* * * * *') }
     agent { 
         label 'master'
         }
+    triggers { pollSCM('* * * * *') }
     options {
         buildDiscarder(logRotator(numToKeepStr: '10', artifactNumToKeepStr: '10'))
         timestamps()
     }
     stages {
+        stage("docker login") {
+            steps {
+                echo " ============== docker login =================="
+                withCredentials([usernamePassword(credentialsId: 'dockerhub_vadetskii', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                    sh """
+                    docker login -u $USERNAME -p $PASSWORD
+                    """
+                }
+            }
+        }
         stage("create docker image") {
             steps {
-                echo " *** start building image *** "
+                echo " ============== start building image =================="
                 dir ('docker/toolbox') {
-                	sh 'docker build -t toolbox:latest . '
+                	sh 'docker build -t vadetskii/toolbox:latest . '
                 }
+            }
+        }
+        stage("docker push") {
+            steps {
+                echo " ============== start pushing image =================="
+                sh '''
+                docker push vadetskii/toolbox:latest
+                '''
             }
         }
     }
